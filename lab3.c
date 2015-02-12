@@ -5,9 +5,7 @@
 
   Lab 3: structures and dynamic memory
 
-  Authors: Kevin Wortman (kwortman@csu.fullerton.edu) (REPLACE THIS
-  WITH YOUR NAMES AND CSUF EMAIL ADDRESSES)
-
+  Authors: Justin Stewart (scubastew@csu.fullerton.edu)
 */ 
 
 #include <assert.h>  // for assert()
@@ -91,25 +89,23 @@ void queue_print(struct Queue* queue);
 */
 
 struct Queue {
-  struct Queue* head;
-  struct Queue* tail;
+  struct Node* head;
   int n;
 };
 
 struct Node {
-  struct Queue* prev;
-  struct Queue* next;
+  struct Node* prev;
+  struct Node* next;
   int data;
 };
 
 struct Queue* queue_make() {
   struct Queue* queue;
 
-  queue = malloc(sizeof(struct Node));
+  queue = malloc(sizeof(struct Queue));
 
   queue->n = 0;
-  queue->head = queue;
-  queue->tail = queue;
+  queue->head = NULL;
 
   return queue;
 }
@@ -126,20 +122,22 @@ int queue_length(struct Queue* queue) {
 
 int queue_push_front(struct Queue* queue, int data) {
   assert(queue != NULL);
-  
   struct Node* p;
+  struct Node* q;
+
   p = malloc(sizeof(struct Node));
   p->data = data;
   
-  if(queue->head == queue) {
-    p->next = queue;
-    p->prev = queue;
+  if(queue->head == NULL) {
+    p->next = NULL;
+    p->prev = queue->head;
+    queue->head = p;
   }
   else {
-    queue->head->prev = p;
-    p->next = queue->head;
+    q = queue->head;
+    p->next = q;
+    p->prev = queue->head;
     queue->head = p;
-    p->prev = queue;
   }   
 
   queue->n++;
@@ -150,8 +148,21 @@ int queue_push_front(struct Queue* queue, int data) {
 int queue_push_back(struct Queue* queue, int data) {
   assert(queue != NULL);
   assert(queue->n < QUEUE_CAPACITY);
+  struct Node* p;
+  struct Node* q;
 
-  queue->data[queue->n] = data;
+  q = queue->head;
+  p = malloc(sizeof(struct Node));
+  p->data = data;
+  p->next = NULL;
+
+  while(q->next != NULL) {
+    q = q->next;
+  }
+
+  p->prev = q;
+  q->next = p;
+  
   queue->n++;
 
   return 1;
@@ -160,51 +171,86 @@ int queue_push_back(struct Queue* queue, int data) {
 int queue_front(struct Queue* queue) {
   assert(queue != NULL);
   assert(queue_length(queue) > 0);
+  struct Node* p;
+  p = queue->head;
 
-  return queue->data[0];
+  return p->data;
 }
 
 int queue_back(struct Queue* queue) {
   assert(queue != NULL);
   assert(queue_length(queue) > 0);
+  struct Node* p;
+  p = queue->head;
+  
+  while(p->next != NULL) {
+    p = p->next;
+  }
 
-  return queue->data[queue->n - 1];
+  return p->data;
 }
 
 void queue_pop_front(struct Queue* queue) {
-  int i;
+  struct Node* p;
+  struct Node* q;
 
   assert(queue != NULL);
   assert(queue_length(queue) > 0);
 
-  for (i = 1; i < QUEUE_CAPACITY; i++)
-    queue->data[i - 1] = queue->data[i];
+  p = queue->head;
+
+  if(queue->n > 1) {
+    q = p->next;
+    queue->head = q;
+    q->prev = queue->head;
+  }
+  else {
+    queue->head = NULL;
+  }
+
+  free(p);
 
   queue->n--;
 }
 
 void queue_pop_back(struct Queue* queue) {
+  struct Node* p;
+  struct Node* q;
+
   assert(queue != NULL);
   assert(queue_length(queue) > 0);
+
+  p = queue->head;
+  while(p->next != NULL) {
+    q = p;
+    p = p->next;
+  }
+  q->next = NULL;
+  free(p);
 
   queue->n--;
 }
 
 void queue_clear(struct Queue* queue) {
   assert(queue != NULL);
-
-  queue->n = 0;
+  while(queue->head != NULL) {
+    queue_pop_front(queue);
+  }
 }
 
 void queue_print(struct Queue* queue) {
-  int i;
+  struct Node* p;
+
+  p = queue->head;
 
   assert(queue != NULL);
 
   printf("queue:");
 
-  for (i = 0; i < queue->n; i++)
-    printf(" %i", queue->data[i]);
+  while(p != NULL) {
+    printf(" %d", p->data);
+    p = p->next;
+  }
 
   printf("\n");
 }
@@ -318,11 +364,13 @@ int main(void) {
 
   for (i = 0; i < 1000000; i++) {
     queue_push_back(queue, i);
+    printf("%d\n", i);
     assert(queue_front(queue) == 0);
     assert(queue_back(queue) == i);
   }
   assert(queue_length(queue) == 1000000);
 
+  printf("Finished 1M stress test...\n");
   /* Free the queue. */
   queue_free(queue);
 
