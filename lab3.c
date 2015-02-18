@@ -65,8 +65,6 @@ void queue_print(struct Queue* queue);
 
 /********** START OF CODE TO MODIFY **********/
 
-#define QUEUE_CAPACITY 100000 // one hundred thousand
-
 /* This is a poor implementation of the queue interface based upon a
    fixed-size array. The array approach has two big flaws: it is
    limited to QUEUE_CAPACITY elements, and pushing an element to the
@@ -90,6 +88,7 @@ void queue_print(struct Queue* queue);
 
 struct Queue {
   struct Node* head;
+  struct Node* tail;
   int n;
 };
 
@@ -106,6 +105,7 @@ struct Queue* queue_make() {
 
   queue->n = 0;
   queue->head = NULL;
+  queue->tail = NULL;
 
   return queue;
 }
@@ -132,11 +132,13 @@ int queue_push_front(struct Queue* queue, int data) {
     p->next = NULL;
     p->prev = queue->head;
     queue->head = p;
+    queue->tail = p;
   }
   else {
     q = queue->head;
     p->next = q;
     p->prev = queue->head;
+    q->prev = p;
     queue->head = p;
   }   
 
@@ -147,21 +149,24 @@ int queue_push_front(struct Queue* queue, int data) {
 
 int queue_push_back(struct Queue* queue, int data) {
   assert(queue != NULL);
-  assert(queue->n < QUEUE_CAPACITY);
   struct Node* p;
   struct Node* q;
 
-  q = queue->head;
+  q = queue->tail;
   p = malloc(sizeof(struct Node));
   p->data = data;
   p->next = NULL;
 
-  while(q->next != NULL) {
-    q = q->next;
+  if(queue->head == NULL) {
+    p->prev = queue->head;
+    queue->head = p;
+    queue->tail = p;
   }
-
-  p->prev = q;
-  q->next = p;
+  else {
+    q->next = p;
+    p->prev = q;
+    queue->tail = p;
+  }
   
   queue->n++;
 
@@ -172,6 +177,7 @@ int queue_front(struct Queue* queue) {
   assert(queue != NULL);
   assert(queue_length(queue) > 0);
   struct Node* p;
+
   p = queue->head;
 
   return p->data;
@@ -181,21 +187,16 @@ int queue_back(struct Queue* queue) {
   assert(queue != NULL);
   assert(queue_length(queue) > 0);
   struct Node* p;
-  p = queue->head;
-  
-  while(p->next != NULL) {
-    p = p->next;
-  }
+  p = queue->tail; 
 
   return p->data;
 }
 
 void queue_pop_front(struct Queue* queue) {
-  struct Node* p;
-  struct Node* q;
-
   assert(queue != NULL);
   assert(queue_length(queue) > 0);
+  struct Node* p;
+  struct Node* q;
 
   p = queue->head;
 
@@ -206,6 +207,7 @@ void queue_pop_front(struct Queue* queue) {
   }
   else {
     queue->head = NULL;
+    queue->tail = NULL;
   }
 
   free(p);
@@ -214,18 +216,16 @@ void queue_pop_front(struct Queue* queue) {
 }
 
 void queue_pop_back(struct Queue* queue) {
+  assert(queue != NULL);
+  assert(queue_length(queue) > 0);
   struct Node* p;
   struct Node* q;
 
-  assert(queue != NULL);
-  assert(queue_length(queue) > 0);
-
-  p = queue->head;
-  while(p->next != NULL) {
-    q = p;
-    p = p->next;
-  }
+  p = queue->tail;
+  q = p->prev; 
   q->next = NULL;
+  queue->tail = q;
+  
   free(p);
 
   queue->n--;
@@ -239,11 +239,10 @@ void queue_clear(struct Queue* queue) {
 }
 
 void queue_print(struct Queue* queue) {
+  assert(queue != NULL);
   struct Node* p;
 
   p = queue->head;
-
-  assert(queue != NULL);
 
   printf("queue:");
 
@@ -273,7 +272,7 @@ int main(void) {
   /* Test basic operation: push elements, alternating somewhat
      randomly between the front and back. We assert correctness of the
      queue after each step. */
-
+  
   ok = queue_push_front(queue, 1);
   assert(ok);
   assert(queue_length(queue) == 1);
@@ -314,7 +313,7 @@ int main(void) {
   assert(queue_front(queue) == 5);
   assert(queue_back(queue) == 3);
   queue_print(queue);
-  
+
   queue_pop_back(queue);
   assert(queue_length(queue) == 3);
   assert(queue_front(queue) == 5);
@@ -364,7 +363,6 @@ int main(void) {
 
   for (i = 0; i < 1000000; i++) {
     queue_push_back(queue, i);
-    printf("%d\n", i);
     assert(queue_front(queue) == 0);
     assert(queue_back(queue) == i);
   }
